@@ -63,8 +63,9 @@ function onPositionUpdate(position){
 }
 
 function updateBikeArrowPosition(lat, lon){
-    if(!bikeArrow){
-        bikeArrow = L.marker([lat, lon], {
+    // Utilisation de window.bikeArrow pour éviter le crash de variable locale non déclarée
+    if(!window.bikeArrow){
+        window.bikeArrow = L.marker([lat, lon], {
             icon: L.divIcon({
                 className: "bike-icon",
                 html: `
@@ -76,13 +77,13 @@ function updateBikeArrowPosition(lat, lon){
             })
         }).addTo(window.map);
     } else {
-        bikeArrow.setLatLng([lat, lon]);
+        window.bikeArrow.setLatLng([lat, lon]);
         updateBikeArrow();
     }
 }
 
 function updateBikeArrow(){
-    if(!bikeArrow) return;
+    if(!window.bikeArrow) return;
 
     const icon = L.divIcon({
         className: "bike-icon",
@@ -94,5 +95,5 @@ function updateBikeArrow(){
         iconAnchor: [20, 20]
     });
 
-    bikeArrow.setIcon(icon);
+    window.bikeArrow.setIcon(icon);
 }
