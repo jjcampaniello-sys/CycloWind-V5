@@ -26,7 +26,9 @@ window.map = L.map('map').setView([54.5260, 15.2551], 4);
 
     L.tileLayer(
         'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        { attribution: 'OpenStreetMap' }
+        { // 🔥 AJOUTEZ OU MODIFIEZ CETTE LIGNE : Autorise la carte à plonger très près
+    maxZoom: 20, 
+           attribution: 'OpenStreetMap' }
     ).addTo(window.map);
 
     window.routeGroup = L.layerGroup().addTo(window.map);
