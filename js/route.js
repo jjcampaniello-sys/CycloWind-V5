@@ -1,7 +1,7 @@
 // route.js - Direction segment route
 function getSegmentDirection(p1, p2){
-    const dy = p2[0] - p1[0];
-    const dx = p2[1] - p1[1];
+    const dy = p2 - p1;
+    const dx = p2 - p1;
     
     let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
@@ -14,14 +14,14 @@ function getSegmentDirection(p1, p2){
 
 async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
-
-    const url = "https://api.openrouteservice.org/v2/directions/cycling-regular/geojson";
+    const url = "https://openrouteservice.org";
   
+    // Contournement sécurisé sans crochets bruts pour l'envoi API
+    const coordStart = Array(start.lng, start.lat);
+    const coordEnd = Array(endLon, endLat);
+
     const body = {
-        coordinates: [
-            [start.lng, start.lat],
-            [endLon, endLat]
-        ],
+        coordinates: Array(coordStart, coordEnd),
         alternative_routes: {
             target_count: 3,    
             share_factor: 0.4,  
@@ -83,7 +83,7 @@ function drawWindRoute(latlngs){
         else if(cost > 8) color = "orange";
 
         const line = L.polyline(
-            [latlngs[i], latlngs[i+1]],
+            Array(latlngs[i], latlngs[i+1]),
             { color: color, weight: 6 }
         ).addTo(window.routeGroup);
 
@@ -120,22 +120,22 @@ async function getRoute(){
     
     const allRoutesData = await getAlternativeRoute(start, endLat, endLon);
     
-    if (!allRoutesData.features || allRoutesData.features.length === 0) {
+    if (!allRoutesData || !allRoutesData.features || allRoutesData.features.length === 0) {
         alert("Aucun itinéraire trouvé");
         return;
     }
 
-    // EXTRACTION CORRIGÉE DES 3 ITINÉRAIRES
-    const feature1 = allRoutesData.features[0];
-    const latlngs1 = feature1.geometry.coordinates.map(p => [p[1], p[0]]);
+    // Extraction sécurisée via la méthode Array()
+    const feature1 = allRoutesData.features;
+    const latlngs1 = feature1.geometry.coordinates.map(p => Array(p, p));
     const score1 = calculateWindScore(latlngs1);
 
     let latlngs2 = latlngs1; 
     let score2 = score1;
     let feature2 = feature1;
     if (allRoutesData.features.length > 1) {
-        feature2 = allRoutesData.features[1];
-        latlngs2 = feature2.geometry.coordinates.map(p => [p[1], p[0]]);
+        feature2 = allRoutesData.features;
+        latlngs2 = feature2.geometry.coordinates.map(p => Array(p, p));
         score2 = calculateWindScore(latlngs2);
     }
 
@@ -143,17 +143,17 @@ async function getRoute(){
     let score3 = score1;
     let feature3 = feature1;
     if (allRoutesData.features.length > 2) {
-        feature3 = allRoutesData.features[2];
-        latlngs3 = feature3.geometry.coordinates.map(p => [p[1], p[0]]);
+        feature3 = allRoutesData.features;
+        latlngs3 = feature3.geometry.coordinates.map(p => Array(p, p));
         score3 = calculateWindScore(latlngs3);
     }
 
-    window.allTracksPersist = [latlngs1, latlngs2, latlngs3];
-    window.allScoresPersist = [score1, score2, score3];
-    window.allFeaturesPersist = [feature1, feature2, feature3];
-    window.currentRoute = latlngs1.map(p => ({ lat: p[0], lng: p[1] }));
+    window.allTracksPersist = Array(latlngs1, latlngs2, latlngs3);
+    window.allScoresPersist = Array(score1, score2, score3);
+    window.allFeaturesPersist = Array(feature1, feature2, feature3);
+    window.currentRoute = latlngs1.map(p => ({ lat: p, lng: p }));
 
-    const firstDir = getSegmentDirection(latlngs1[0], latlngs1[1]);
+    const firstDir = getSegmentDirection(latlngs1, latlngs1);
     await getWind(start.lat, start.lng, firstDir);
     
     window.routeGroup.clearLayers();
@@ -196,7 +196,7 @@ async function getRoute(){
             gainText = `⚠️ Attention : +${Math.abs(rawGain).toFixed(0)}% d'effort vent`;
         }
 
-        const nomsVues = ["Initiale", "Alternative A", "Alternative B"];
+        const nomsVues = Array("Initiale", "Alternative A", "Alternative B");
 
         document.getElementById("windInfo").innerHTML = `
             ${recommendation}
@@ -213,12 +213,17 @@ async function getRoute(){
 
     updateWindText(0);
 
-    // CORRECTION CRITIQUE 2 : Marges d'affichage carte sécurisées avec une variable dédiée
+    // 🔥 SOLUTION SÉCURISÉE SANS AUCUN TROU DE SYNTAXE (Utilisation de L.point)
     if (latlngs1 && latlngs1.length > 0) {
         const bounds = L.latLngBounds(latlngs1);
-        const margesGlobales =; 
+        
+        // Crée des points de marge Leaflet natifs (50 pixels de chaque côté) pour contourner le bug système
+        const margePixelX = 50;
+        const margePixelY = 50;
+        const objetPadding = L.point(margePixelX, margePixelY);
+
         window.map.fitBounds(bounds, { 
-            padding: margesGlobales,
+            padding: objetPadding,
             maxZoom: 15
         });
     }
@@ -234,7 +239,7 @@ async function getRoute(){
 
         toggleBtn.onclick = function() {
             window.routeGroup.clearLayers();
-            if (typeof routeLayers !== 'undefined') { routeLayers = []; }
+            if (typeof routeLayers !== 'undefined') { routeLayers = Array(); }
 
             currentTrackView = (currentTrackView + 1) % maxViews;
             drawWindRoute(window.allTracksPersist[currentTrackView]);
@@ -245,7 +250,7 @@ async function getRoute(){
                 }
             }
 
-            const prochainsNoms = ["l'Alternative A", "l'Alternative B", "la Route Initiale"];
+            const prochainsNoms = Array("l'Alternative A", "l'Alternative B", "la Route Initiale");
             let textIdx = currentTrackView;
             if (maxViews === 2 && currentTrackView === 1) textIdx = 1;
             toggleBtn.innerText = "Voir " + prochainsNoms[textIdx];
@@ -259,7 +264,6 @@ async function getRoute(){
     window.drawWindRoute = drawWindRoute;
 }
 
-// CORRECTION CRITIQUE 3 : Restauration et fermeture totale de la fonction Démarrer
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -277,17 +281,22 @@ function startNavigation() {
         window.map.setView(window.userPosition, 16);
 
         setTimeout(() => {
-            window.map.panBy([0, -85], { animate: true });
+            const decalageX = 0;
+            const decalageY = -85;
+            window.map.panBy(Array(decalageX, decalageY), { animate: true });
         }, 250);
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
         btn.style.backgroundColor = "#2ecc71"; 
 
-        if (window.allTracksPersist && window.allTracksPersist[0]) {
-            const margesGlobales =;
-            window.map.fitBounds(L.latLngBounds(window.allTracksPersist[0]), { 
-                padding: margesGlobales,
+        if (window.allTracksPersist && window.allTracksPersist) {
+            const margePixelX = 50;
+            const margePixelY = 50;
+            const objetPadding = L.point(margePixelX, margePixelY);
+
+            window.map.fitBounds(L.latLngBounds(window.allTracksPersist), { 
+                padding: objetPadding,
                 maxZoom: 15
             });
         }
