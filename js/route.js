@@ -302,7 +302,7 @@ function startNavigation() {
         window.isNavigating = true;
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; 
-        window.map.setView(window.userPosition, 17);
+        window.map.setView(window.userPosition, 16);
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
