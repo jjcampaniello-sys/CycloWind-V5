@@ -4,28 +4,32 @@ window.destination = null;
 
 function searchDestination(){
 
-    let query = document.getElementById("destination").value.trim();
+    const rawQuery = document.getElementById("destination").value.trim();
 
-    if(query.length < 3) return;
-
-    // 🔥 CORRECTIF CRITIQUE : Si la recherche commence par un numéro (ex: "12 rue de la paix")
-    // On détecte le numéro et on le bascule à la fin pour que l'API Photon comprenne à 100%
-    const matchNumeroDebut = query.match(/^(\d+)\s+(.+)$/);
-    if (matchNumeroDebut) {
-        const numero = matchNumeroDebut[1]; // Capture le numéro (ex: "12")
-        const resteAdresse = matchNumeroDebut[2]; // Capture la rue (ex: "rue de la paix")
-        query = `${resteAdresse} ${numero}`; // Reconstruit l'adresse pour l'API -> "rue de la paix 12"
-        console.log("Adresse formatée pour Photon :", query);
-    }
+    if(rawQuery.length < 3) return;
 
     const domaineApi = "pho" + "ton" + ".komoot.io";
-    
-    let parametresGeo = "";
-    if (window.userPosition && window.userPosition[0] && window.userPosition[1]) {
-        parametresGeo = `&lat=${window.userPosition[0]}&lon=${window.userPosition[1]}`;
+    let urlComplete = "";
+
+    // 🔥 DECOUPAGE INTELLIGENT DE L'ADRESSE
+    // Cherche si la ligne commence par un numéro suivi d'une rue (ex: "12 rue de la paix paris")
+    const matchAdresse = rawQuery.match(/^(\d+)\s+(.+)$/);
+
+    if (matchAdresse) {
+        const numero = matchAdresse[1]; // Ex: "12"
+        const reste = matchAdresse[2];   // Ex: "rue de la paix paris"
+        
+        // On bascule sur l'endpoint /structured pour forcer la reconnaissance du numéro de maison
+        urlComplete = `https://${domaineApi}/structured?street=${encodeURIComponent(reste)}&housenumber=${encodeURIComponent(numero)}&limit=5&lang=fr`;
+    } else {
+        // Si l'utilisateur n'écrit pas de numéro, on utilise la recherche classique d'origine
+        urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(rawQuery)}&limit=5&lang=fr`;
     }
 
-    const urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(query)}&limit=5&lang=fr${parametresGeo}`;
+    // Ajout de la priorité locale géographique si le GPS est prêt
+    if (window.userPosition && window.userPosition[0]) {
+        urlComplete += `&lat=${window.userPosition[0]}&lon=${window.userPosition[1]}`;
+    }
 
     fetch(urlComplete)
         .then(res => res.json())
@@ -36,13 +40,18 @@ function searchDestination(){
 
             const uniqueAddresses = new Set();
 
+            if (!data.features || data.features.length === 0) {
+                console.log("Aucun résultat trouvé pour cette adresse.");
+                return;
+            }
+
             data.features.forEach(place => {
 
                 const name = place.properties.name || "";
                 const housenumber = place.properties.housenumber || ""; 
                 const city = place.properties.city || "";
 
-                // Reconstruction propre de l'affichage pour l'utilisateur (Numéro Rue Ville)
+                // Reconstruction propre pour l'affichage (Numéro Rue Ville)
                 let full = "";
                 if (housenumber && !name.includes(housenumber)) {
                     full = housenumber + " " + name + " " + city;
