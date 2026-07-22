@@ -305,8 +305,8 @@ function startNavigation() {
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; // Rouge
 
-        // 1. Placement direct au zoom de suivi standard 18
-        window.map.setView(window.userPosition, 18);
+        // 1. Placement direct au zoom de suivi standard 17
+        window.map.setView(window.userPosition, 17);
 
         // 2. Glissement physique de l'écran en pixels pour remonter la flèche bleue
         setTimeout(() => {
