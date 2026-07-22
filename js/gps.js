@@ -6,7 +6,7 @@ let isFirstLoad = true;
 
 window.isNavigating = false;
 
-alert("GPS démarre");
+
 
 function startGPS(){
     if(!navigator.geolocation){
