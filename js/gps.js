@@ -1,13 +1,12 @@
 // gps.js
 
 let currentHeading = 0;
-// utilise la variable créée dans app.js//let bikeArrow = null;
 let gpsWatchId = null;
-
-// 🔥 NOUVEL ÉTAT POUR LE BOUTON DÉMARRER
-window.isNavigating = false;
 let isFirstLoad = true;
 
+window.isNavigating = false;
+
+alert("GPS démarre");
 
 function startGPS(){
     if(!navigator.geolocation){
@@ -21,14 +20,13 @@ function startGPS(){
             alert("Erreur GPS : " + error.message);
         },
         {
-            enableHighAccuracy:true,
-            maximumAge:1000,
-            timeout:10000
+            enableHighAccuracy: true,
+            maximumAge: 1000,
+            timeout: 10000
         }
     );
 }
 
-// ----------------------------
 function startCompass(){
     window.addEventListener("deviceorientation", function(event){
         if(event.alpha !== null){
@@ -38,7 +36,6 @@ function startCompass(){
     }, true);
 }
 
-// ----------------------------
 function onPositionUpdate(position){
     const lat = position.coords.latitude;
     const lon = position.coords.longitude;
@@ -53,60 +50,48 @@ function onPositionUpdate(position){
 
     updateBikeArrowPosition(lat, lon);
 
-    // 1. Premier chargement de l'application : zoom fixe propre
     if (isFirstLoad) {
         window.map.setView([lat, lon], 16);
         isFirstLoad = false;
     }
 
-    // 2. 🔥 SUIVI EN NAIVGATION AVEC RECENTRAGE DÉCALÉ EN PIXELS
+    // Suivi régulier en navigation avec décalage de pixels
     if (window.isNavigating) {
-        // Évite les micro-sauts visuels sur Safari : On se déplace d'abord, puis on décale
         window.map.setView([lat, lon], 16, { animate: false });
-        window.map.panBy([0, -80], { animate: false }); 
+        window.map.panBy([0, -85], { animate: false });
     }
 }
 
-
-// ----------------------------
 function updateBikeArrowPosition(lat, lon){
     if(!bikeArrow){
-        bikeArrow = L.marker([lat,lon], {
+        bikeArrow = L.marker([lat, lon], {
             icon: L.divIcon({
-                className:"bike-icon",
-                html:`
-                <div style="
-                transform:rotate(${currentHeading}deg);
-                font-size:32px;
-                color:blue;">
+                className: "bike-icon",
+                html: `
+                <div style="transform:rotate(${currentHeading}deg); font-size:32px; color:blue;">
                 ➤
                 </div>`,
-                iconSize:[40,40],
-                iconAnchor:[20,20]
+                iconSize: [40, 40], // 🔥 RÉPARÉ
+                iconAnchor: [20, 20] // 🔥 RÉPARÉ
             })
         }).addTo(window.map);
-    }
-    else{
-        bikeArrow.setLatLng([lat,lon]);
+    } else {
+        bikeArrow.setLatLng([lat, lon]);
         updateBikeArrow();
     }
 }
 
-// ----------------------------
 function updateBikeArrow(){
     if(!bikeArrow) return;
 
     const icon = L.divIcon({
-        className:"bike-icon",
-        html:`
-        <div style="
-        transform:rotate(${currentHeading}deg);
-        font-size:32px;
-        color:blue;">
+        className: "bike-icon",
+        html: `
+        <div style="transform:rotate(${currentHeading}deg); font-size:32px; color:blue;">
         ➤
         </div>`,
-        iconSize:[40,40],
-        iconAnchor:[20,20]
+        iconSize: [40, 40], // 🔥 RÉPARÉ
+        iconAnchor: [20, 20] // 🔥 RÉPARÉ
     });
 
     bikeArrow.setIcon(icon);
