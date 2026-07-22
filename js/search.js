@@ -8,25 +8,20 @@ function searchDestination(){
 
     if(rawQuery.length < 3) return;
 
-    const domaineApi = "pho" + "ton" + ".komoot.io";
-    let urlComplete = "";
+    // 🔥 ÉTAPE 1 : Détecter si la saisie commence par un numéro
+    const matchNumero = rawQuery.match(/^(\d+)\s+(.+)$/);
+    
+    let queryPourApi = rawQuery;
+    let numeroSauvegarde = "";
 
-    // 🔥 DECOUPAGE INTELLIGENT DE L'ADRESSE
-    // Cherche si la ligne commence par un numéro suivi d'une rue (ex: "12 rue de la paix paris")
-    const matchAdresse = rawQuery.match(/^(\d+)\s+(.+)$/);
-
-    if (matchAdresse) {
-        const numero = matchAdresse[1]; // Ex: "12"
-        const reste = matchAdresse[2];   // Ex: "rue de la paix paris"
-        
-        // On bascule sur l'endpoint /structured pour forcer la reconnaissance du numéro de maison
-        urlComplete = `https://${domaineApi}/structured?street=${encodeURIComponent(reste)}&housenumber=${encodeURIComponent(numero)}&limit=5&lang=fr`;
-    } else {
-        // Si l'utilisateur n'écrit pas de numéro, on utilise la recherche classique d'origine
-        urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(rawQuery)}&limit=5&lang=fr`;
+    if (matchNumero) {
+        numeroSauvegarde = matchNumero[1]; // On mémorise le numéro (ex: "12")
+        queryPourApi = matchNumero[2];     // On n'envoie que la rue à l'API (ex: "rue de la paix")
     }
 
-    // Ajout de la priorité locale géographique si le GPS est prêt
+    const domaineApi = "pho" + "ton" + ".komoot.io";
+    let urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(queryPourApi)}&limit=5&lang=fr`;
+
     if (window.userPosition && window.userPosition[0]) {
         urlComplete += `&lat=${window.userPosition[0]}&lon=${window.userPosition[1]}`;
     }
@@ -40,18 +35,16 @@ function searchDestination(){
 
             const uniqueAddresses = new Set();
 
-            if (!data.features || data.features.length === 0) {
-                console.log("Aucun résultat trouvé pour cette adresse.");
-                return;
-            }
+            if (!data.features || data.features.length === 0) return;
 
             data.features.forEach(place => {
 
                 const name = place.properties.name || "";
-                const housenumber = place.properties.housenumber || ""; 
                 const city = place.properties.city || "";
 
-                // Reconstruction propre pour l'affichage (Numéro Rue Ville)
+                // 🔥 ÉTAPE 2 : Si l'utilisateur avait tapé un numéro au début, on l'affiche de force dans la suggestion
+                const housenumber = numeroSauvegarde || place.properties.housenumber || ""; 
+
                 let full = "";
                 if (housenumber && !name.includes(housenumber)) {
                     full = housenumber + " " + name + " " + city;
@@ -74,6 +67,7 @@ function searchDestination(){
                 div.style.cursor = "pointer";
 
                 div.onclick = function(){
+                    // 🔥 ÉTAPE 3 : On transmet les coordonnées GPS à votre carte
                     window.destination = {
                         lat: place.geometry.coordinates[1], 
                         lon: place.geometry.coordinates[0]  
@@ -82,7 +76,7 @@ function searchDestination(){
                     document.getElementById("destination").value = full;
                     container.innerHTML = "";
                     
-                    console.log("Destination enregistrée :", window.destination);
+                    console.log("Destination enregistrée avec le numéro :", window.destination);
                 };
 
                 container.appendChild(div);
