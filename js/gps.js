@@ -55,12 +55,12 @@ function onPositionUpdate(position){
     updateBikeArrowPosition(lat, lon);
 
     if (isFirstLoad) {
-        window.map.setView([lat, lon], 18);
+        window.map.setView([lat, lon], 17);
         isFirstLoad = false;
     }
 
     if (window.isNavigating) {
-        window.map.setView([lat, lon], 18, { animate: false });
+        window.map.setView([lat, lon], 17, { animate: false });
         // Déplacement en pixels pour remonter la flèche au-dessus des bandeaux
         const pixelX = 0;
         const pixelY = -5;
