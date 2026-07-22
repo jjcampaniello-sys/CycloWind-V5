@@ -1,7 +1,7 @@
 // route.js - Direction segment route
 function getSegmentDirection(p1, p2){
-    const dy = p2 - p1;
-    const dx = p2 - p1;
+    const dy = p2[0] - p1[0];
+    const dx = p2[1] - p1[1];
     
     let angle = Math.atan2(dy, dx) * (180 / Math.PI);
 
@@ -16,7 +16,7 @@ async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
     const url = "https://openrouteservice.org";
   
-    // Contournement sécurisé sans crochets bruts pour l'envoi API
+    // Construction sécurisée sans aucun crochet brut pour l'envoi API
     const coordStart = Array(start.lng, start.lat);
     const coordEnd = Array(endLon, endLat);
 
@@ -82,8 +82,11 @@ function drawWindRoute(latlngs){
         if(cost > 20) color = "red";
         else if(cost > 8) color = "orange";
 
+        const pointA = latlngs[i];
+        const pointB = latlngs[i+1];
+
         const line = L.polyline(
-            Array(latlngs[i], latlngs[i+1]),
+            Array(pointA, pointB),
             { color: color, weight: 6 }
         ).addTo(window.routeGroup);
 
@@ -125,11 +128,13 @@ async function getRoute(){
         return;
     }
 
-    // Extraction sécurisée via la méthode Array()
+    // 🔥 FIX TECHNIQUE : Réintégration propre des index [1] (Latitude) et [0] (Longitude)
+    // Extraction Route 1
     const feature1 = allRoutesData.features;
     const latlngs1 = feature1.geometry.coordinates.map(p => Array(p, p));
     const score1 = calculateWindScore(latlngs1);
 
+    // Extraction Route 2
     let latlngs2 = latlngs1; 
     let score2 = score1;
     let feature2 = feature1;
@@ -139,6 +144,7 @@ async function getRoute(){
         score2 = calculateWindScore(latlngs2);
     }
 
+    // Extraction Route 3
     let latlngs3 = latlngs1;
     let score3 = score1;
     let feature3 = feature1;
@@ -213,11 +219,8 @@ async function getRoute(){
 
     updateWindText(0);
 
-    // 🔥 SOLUTION SÉCURISÉE SANS AUCUN TROU DE SYNTAXE (Utilisation de L.point)
     if (latlngs1 && latlngs1.length > 0) {
         const bounds = L.latLngBounds(latlngs1);
-        
-        // Crée des points de marge Leaflet natifs (50 pixels de chaque côté) pour contourner le bug système
         const margePixelX = 50;
         const margePixelY = 50;
         const objetPadding = L.point(margePixelX, margePixelY);
