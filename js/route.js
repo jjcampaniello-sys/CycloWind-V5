@@ -1,18 +1,4 @@
-// Direction segment route
-function getSegmentDirection(p1, p2){
-    const dy = p2[0] - p1[0];
-    const dx = p2[1] - p1[1];
-    
-    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-    if(angle < 0){
-        angle += 360;
-    }
-
-    return angle;
-}
-
-// Direction segment route
+// route.js - Direction segment route
 function getSegmentDirection(p1, p2){
     const dy = p2[0] - p1[0];
     const dx = p2[1] - p1[1];
@@ -135,18 +121,6 @@ function drawWindRoute(latlngs){
     }
 }
 
-function drawGrayRoute(latlngs){
-    const line = L.polyline(
-        latlngs,
-        {
-            color: "gray",
-            weight: 5
-        }
-    ).addTo(window.routeGroup);
-
-    routeLayers.push(line);
-}
-
 // Calcul trajet principaux
 async function getRoute(){
     alert("getRoute démarré");
@@ -176,12 +150,10 @@ async function getRoute(){
         return;
     }
 
-    // 2. Extraction route normale
     const normalFeature = allRoutesData.features[0];
     const coordsNormal = normalFeature.geometry.coordinates;
     const latlngsNormal = coordsNormal.map(point => [point[1], point[0]]);
 
-    // 3. Extraction route alternative
     let latlngsAlternative = latlngsNormal; 
     let alternativeFeature = normalFeature;
 
@@ -189,9 +161,6 @@ async function getRoute(){
         alternativeFeature = allRoutesData.features[1];
         const coordsAlt = alternativeFeature.geometry.coordinates;
         latlngsAlternative = coordsAlt.map(point => [point[1], point[0]]);
-        drawGrayRoute(latlngsAlternative);
-    } else {
-        console.log("L'API n'a pas pu générer de route alternative viable pour ce trajet.");
     }
 
     window.latlngsNormalPersist = latlngsNormal;
@@ -201,6 +170,7 @@ async function getRoute(){
     const firstDir = getSegmentDirection(latlngsNormal[0], latlngsNormal[1]);
     await getWind(start.lat, start.lng, firstDir);
     
+    window.routeGroup.clearLayers();
     drawWindRoute(latlngsNormal);
 
     const normalScore = calculateWindScore(latlngsNormal);
@@ -222,7 +192,6 @@ async function getRoute(){
         ? "🌱 CycloWind recommande l'alternative"
         : "🚴 CycloWind recommande ce trajet";
 
-    // --- CONFIGURATION DE L'AFFICHAGE DYNAMIQUE ---
     function updateWindText(currentView, activeScore) {
         const featureActive = currentView === "normale" ? normalFeature : alternativeFeature;
         const distanceKm = (featureActive.properties.summary.distance / 1000).toFixed(1);
@@ -258,16 +227,14 @@ async function getRoute(){
 
     updateWindText("normale", normalScore);
 
-    // 🔥 RÉPARÉ : Valeurs de padding restaurées [50, 50] avec maxZoom fixe anti-dézoom Apple
     if (latlngsNormal && latlngsNormal.length > 0) {
         const bounds = L.latLngBounds(latlngsNormal);
         window.map.fitBounds(bounds, { 
-            padding: [50, 50],
-            maxZoom: 15 // Fixé à 15 pour une vue globale d'ensemble confortable sur iPhone
+            padding:,
+            maxZoom: 15
         });
     }
 
-    // --- LOGIQUE DU BOUTON TOGGLE ROUTE A GAUCHE ---
     const toggleBtn = document.getElementById("toggleRouteBtn");
     
     if (allRoutesData.features.length > 1) {
@@ -298,7 +265,6 @@ async function getRoute(){
     window.drawWindRoute = drawWindRoute;
 }
 
-// 🔥 RÉPARÉ ET ENTIÈREMENT SÉCURISÉ POUR TOUS LES SMARTPHONES
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -313,10 +279,8 @@ function startNavigation() {
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; 
 
-        // 1. Placement direct au zoom de suivi 16
         window.map.setView(window.userPosition, 16);
 
-        // 2. Glissement de l'écran en pixels pour dégager les fenêtres d'information du bas
         setTimeout(() => {
             window.map.panBy([0, -85], { animate: true });
         }, 250);
@@ -327,7 +291,7 @@ function startNavigation() {
 
         if (window.latlngsNormalPersist) {
             window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
-                padding: [50, 50],
+                padding:,
                 maxZoom: 15
             });
         }
