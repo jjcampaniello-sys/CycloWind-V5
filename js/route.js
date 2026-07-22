@@ -253,42 +253,20 @@ async function getRoute(){
 
     updateWindText("normale", normalScore);
 
+        // 🔥 AJUSTEMENT DANS getRoute() : Limite stricte pour le zoom automatique global
     if (latlngsNormal && latlngsNormal.length > 0) {
         const bounds = L.latLngBounds(latlngsNormal);
-        window.map.fitBounds(bounds, { padding: [50, 50] }); 
+        
+        // maxZoom: 16 empêche l'écran de s'éloigner trop (très fréquent sur iOS)
+        window.map.fitBounds(bounds, { 
+            padding: [40, 40],
+            maxZoom: 16 
+        });
     }
 
-    const toggleBtn = document.getElementById("toggleRouteBtn");
-    
-    if (allRoutesData.features.length > 1) {
-        toggleBtn.style.display = "block";
-        let showingAlternative = false;
-        toggleBtn.innerText = "Voir la route alternative";
+    // ... (conservez le reste du code intermédiaire de votre bouton toggle identique)
 
-        toggleBtn.onclick = function() {
-            window.routeGroup.clearLayers();
-            if (typeof routeLayers !== 'undefined') { routeLayers = []; }
-
-            if (!showingAlternative) {
-                drawWindRoute(window.latlngsAlternativePersist);
-                toggleBtn.innerText = "Voir la route normale";
-                updateWindText("alternative", alternativeScore);
-                showingAlternative = true;
-            } else {
-                drawWindRoute(window.latlngsNormalPersist);
-                toggleBtn.innerText = "Voir la route alternative";
-                updateWindText("normale", normalScore);
-                showingAlternative = false;
-            }
-        };
-    } else {
-        toggleBtn.style.display = "none";
-    }
-
-    window.drawWindRoute = drawWindRoute;
-}
-
-// 🔥 REPARÉ ET REFERMÉ : Fonction commandée par le bouton Démarrer
+// 🔥 REMPLACER ENTIÈREMENT LA FONCTION DE NAVIGATION À LA FIN DE route.js
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -302,14 +280,27 @@ function startNavigation() {
         window.isNavigating = true;
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; 
+
+        // 1. On applique le zoom universel direct sur l'utilisateur
         window.map.setView(window.userPosition, 16);
+
+        // 2. 🔥 RECENTRAGE EN PIXELS (S'adapte à tous les écrans Apple/Android)
+        // Au lieu de tricher sur la latitude, on demande à Leaflet de faire glisser la carte
+        // de 80 pixels vers le bas. La flèche remonte automatiquement au-dessus de vos fenêtres.
+        setTimeout(() => {
+            window.map.panBy([0, -80], { animate: true });
+        }, 200);
+
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
         btn.style.backgroundColor = "#2ecc71"; 
 
         if (window.latlngsNormalPersist) {
-            window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { padding: [50, 50] });
+            window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
+                padding: [40, 40],
+                maxZoom: 16 
+            });
         }
     }
 }
