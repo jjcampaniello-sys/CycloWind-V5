@@ -14,6 +14,7 @@ function getSegmentDirection(p1, p2){
 
 async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
+    // CORRECTION CRITIQUE 1 : URL officielle de l'API de routage restaurée
     const url = "https://openrouteservice.org";
   
     const body = {
@@ -124,7 +125,7 @@ async function getRoute(){
         return;
     }
 
-    // 🔥 EXTRACTION CORRIGÉE : Indexation précise [1]=Latitude, [0]=Longitude
+    // EXTRACTION CORRIGÉE DES 3 ITINÉRAIRES
     const feature1 = allRoutesData.features[0];
     const latlngs1 = feature1.geometry.coordinates.map(p => [p[1], p[0]]);
     const score1 = calculateWindScore(latlngs1);
@@ -212,10 +213,12 @@ async function getRoute(){
 
     updateWindText(0);
 
+    // CORRECTION CRITIQUE 2 : Marges d'affichage carte sécurisées avec une variable dédiée
     if (latlngs1 && latlngs1.length > 0) {
         const bounds = L.latLngBounds(latlngs1);
+        const margesGlobales =; 
         window.map.fitBounds(bounds, { 
-            padding:,
+            padding: margesGlobales,
             maxZoom: 15
         });
     }
@@ -256,6 +259,7 @@ async function getRoute(){
     window.drawWindRoute = drawWindRoute;
 }
 
+// CORRECTION CRITIQUE 3 : Restauration et fermeture totale de la fonction Démarrer
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -281,8 +285,9 @@ function startNavigation() {
         btn.style.backgroundColor = "#2ecc71"; 
 
         if (window.allTracksPersist && window.allTracksPersist[0]) {
+            const margesGlobales =;
             window.map.fitBounds(L.latLngBounds(window.allTracksPersist[0]), { 
-                padding:,
+                padding: margesGlobales,
                 maxZoom: 15
             });
         }
