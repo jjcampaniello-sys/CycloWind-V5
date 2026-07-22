@@ -14,6 +14,7 @@ function getSegmentDirection(p1, p2){
 
 async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
+    // URL API Officielle restaurée
     const url = "https://openrouteservice.org";
   
     const body = {
@@ -121,6 +122,18 @@ function drawWindRoute(latlngs){
     }
 }
 
+function drawGrayRoute(latlngs){
+    const line = L.polyline(
+        latlngs,
+        {
+            color: "gray",
+            weight: 5
+        }
+    ).addTo(window.routeGroup);
+
+    routeLayers.push(line);
+}
+
 // Calcul trajet principaux
 async function getRoute(){
     alert("getRoute démarré");
@@ -150,72 +163,87 @@ async function getRoute(){
         return;
     }
 
-    const normalFeature = allRoutesData.features[0];
-    const coordsNormal = normalFeature.geometry.coordinates;
-    const latlngsNormal = coordsNormal.map(point => [point[1], point[0]]);
+    // --- EXTRACTION SÉCURISÉE DES 3 ITINÉRAIRES ---
+    const feature1 = allRoutesData.features[0];
+    const latlngs1 = feature1.geometry.coordinates.map(point => [point[1], point[0]]);
+    const score1 = calculateWindScore(latlngs1);
 
-    let latlngsAlternative = latlngsNormal; 
-    let alternativeFeature = normalFeature;
-
+    let latlngs2 = latlngs1; 
+    let score2 = score1;
+    let feature2 = feature1;
     if (allRoutesData.features.length > 1) {
-        alternativeFeature = allRoutesData.features[1];
-        const coordsAlt = alternativeFeature.geometry.coordinates;
-        latlngsAlternative = coordsAlt.map(point => [point[1], point[0]]);
+        feature2 = allRoutesData.features[1];
+        const coordsAlt2 = feature2.geometry.coordinates;
+        latlngs2 = coordsAlt2.map(point => [point[1], point[0]]);
+        score2 = calculateWindScore(latlngs2);
     }
 
-    window.latlngsNormalPersist = latlngsNormal;
-    window.latlngsAlternativePersist = latlngsAlternative;
-    window.currentRoute = latlngsNormal.map(p => ({ lat: p[0], lng: p[1] }));
+    let latlngs3 = latlngs1;
+    let score3 = score1;
+    let feature3 = feature1;
+    if (allRoutesData.features.length > 2) {
+        feature3 = allRoutesData.features[2];
+        const coordsAlt3 = feature3.geometry.coordinates;
+        latlngs3 = coordsAlt3.map(point => [point[1], point[0]]);
+        score3 = calculateWindScore(latlngs3);
+    }
 
-    const firstDir = getSegmentDirection(latlngsNormal[0], latlngsNormal[1]);
+    // Sauvegarde en mémoire persistante globale pour le bouton Toggle
+    window.allTracksPersist = [latlngs1, latlngs2, latlngs3];
+    window.allScoresPersist = [score1, score2, score3];
+    window.allFeaturesPersist = [feature1, feature2, feature3];
+    window.currentRoute = latlngs1.map(p => ({ lat: p[0], lng: p[1] }));
+
+    const firstDir = getSegmentDirection(latlngs1[0], latlngs1[1]);
     await getWind(start.lat, start.lng, firstDir);
     
     window.routeGroup.clearLayers();
-    drawWindRoute(latlngsNormal);
+    drawWindRoute(latlngs1);
+    
+    if (allRoutesData.features.length > 1) drawGrayRoute(latlngs2);
+    if (allRoutesData.features.length > 2) drawGrayRoute(latlngs3);
 
-    const normalScore = calculateWindScore(latlngsNormal);
-    const alternativeScore = calculateWindScore(latlngsAlternative);
+    // --- STRATÉGIE DE RECOMMANDATION DE LA MEILLEURE DES 3 ROUTES ---
+    let bestIndex = 0;
+    let bestScore = score1;
+    let recommendation = "🚴 CycloWind recommande le trajet initial (le plus rapide)";
 
-    const routesArrayMock = { duration: normalFeature.properties.summary.duration };
-    const alternativeMock = { duration: alternativeFeature.properties.summary.duration };
+    if (score2 < score1 * 0.95) {
+        bestIndex = 1;
+        bestScore = score2;
+        recommendation = "🌱 CycloWind recommande l'Alternative A pour contourner le vent";
+    }
+    if (score3 < bestScore * 0.95) {
+        bestIndex = 2;
+        bestScore = score3;
+        recommendation = "🌳 CycloWind recommande l'Alternative B, idéale face au vent";
+    }
 
-    const choice = chooseBestRoute(
-        routesArrayMock,
-        alternativeMock,
-        normalScore,
-        alternativeScore
-    );
+    // --- GESTIONNAIRE DU TEXTE DYNAMIQUE DU CADRAN DE DROITE ---
+    function updateWindText(viewIndex) {
+        const activeFeature = window.allFeaturesPersist[viewIndex];
+        const activeScore = window.allScoresPersist[viewIndex];
+        const distanceKm = (activeFeature.properties.summary.distance / 1000).toFixed(1);
 
-    const windGain = calculateWindGain(normalScore, alternativeScore);
-
-    let recommendation = choice === "alternative" && allRoutesData.features.length > 1
-        ? "🌱 CycloWind recommande l'alternative"
-        : "🚴 CycloWind recommande ce trajet";
-
-    function updateWindText(currentView, activeScore) {
-        const featureActive = currentView === "normale" ? normalFeature : alternativeFeature;
-        const distanceKm = (featureActive.properties.summary.distance / 1000).toFixed(1);
-
-        const rawGain = ((normalScore - alternativeScore) / normalScore) * 100;
+        const rawGain = ((score1 - activeScore) / score1) * 100;
         let gainText = "";
 
-        if (allRoutesData.features.length <= 1) {
-            gainText = "🌬️ Aucune route alternative disponible";
-        } 
-        else if (Math.abs(rawGain) < 5) { 
-            gainText = "🌬️ Exposition au vent équivalente sur les deux trajets";
-        } 
-        else if (rawGain >= 5) {
-            gainText = `🌱 Économie de vent : -${Math.abs(rawGain).toFixed(0)}% d'effort sur l'alternative`;
-        } 
-        else {
-            gainText = `⚠️ Attention : +${Math.abs(rawGain).toFixed(0)}% d'effort vent sur l'alternative`;
+        if (viewIndex === 0) {
+            gainText = "⏱️ Option géographiquement la plus directe";
+        } else if (Math.abs(rawGain) < 5) { 
+            gainText = "🌬️ Exposition au vent équivalente à la route de base";
+        } else if (rawGain >= 5) {
+            gainText = `🌱 Économie de vent : -${Math.abs(rawGain).toFixed(0)}% d'effort sur cette vue`;
+        } else {
+            gainText = `⚠️ Attention : +${Math.abs(rawGain).toFixed(0)}% d'effort vent sur cette vue`;
         }
+
+        const nomsVues = ["Initiale", "Alternative A", "Alternative B"];
 
         document.getElementById("windInfo").innerHTML = `
             ${recommendation}
             <br>
-            📍 Vue : Route ${currentView}
+            📍 Vue : Route ${nomsVues[viewIndex]}
             <br>
             📏 Distance : ${distanceKm} km
             <br>
@@ -225,38 +253,49 @@ async function getRoute(){
         `;
     }
 
-    updateWindText("normale", normalScore);
+    updateWindText(0);
 
-    if (latlngsNormal && latlngsNormal.length > 0) {
-        const bounds = L.latLngBounds(latlngsNormal);
+    // Vue d'ensemble automatique (Ajustée anti-dézoom Apple)
+    if (latlngs1 && latlngs1.length > 0) {
+        const bounds = L.latLngBounds(latlngs1);
         window.map.fitBounds(bounds, { 
             padding:,
             maxZoom: 15
         });
     }
 
+    // --- BOUTON TOGGLE TOURNANT SUR LES ROUTES DISPONIBLES ---
     const toggleBtn = document.getElementById("toggleRouteBtn");
     
     if (allRoutesData.features.length > 1) {
         toggleBtn.style.display = "block";
-        let showingAlternative = false;
-        toggleBtn.innerText = "Voir la route alternative";
+        let currentTrackView = 0;
+        const maxViews = allRoutesData.features.length;
+
+        toggleBtn.innerText = "Voir l'Alternative A";
 
         toggleBtn.onclick = function() {
             window.routeGroup.clearLayers();
             if (typeof routeLayers !== 'undefined') { routeLayers = []; }
 
-            if (!showingAlternative) {
-                drawWindRoute(window.latlngsAlternativePersist);
-                toggleBtn.innerText = "Voir la route normale";
-                updateWindText("alternative", alternativeScore);
-                showingAlternative = true;
-            } else {
-                drawWindRoute(window.latlngsNormalPersist);
-                toggleBtn.innerText = "Voir la route alternative";
-                updateWindText("normale", normalScore);
-                showingAlternative = false;
+            currentTrackView = (currentTrackView + 1) % maxViews;
+
+            // Dessine la route active en couleur
+            drawWindRoute(window.allTracksPersist[currentTrackView]);
+
+            // Redessine les autres routes en gris passif en arrière-plan
+            for (let i = 0; i < maxViews; i++) {
+                if (i !== currentTrackView) {
+                    drawGrayRoute(window.allTracksPersist[i]);
+                }
             }
+
+            const prochainsNoms = ["l'Alternative A", "l'Alternative B", "la Route Initiale"];
+            let textIdx = currentTrackView;
+            if (maxViews === 2 && currentTrackView === 1) textIdx = 1;
+            toggleBtn.innerText = "Voir " + prochainsNoms[textIdx];
+
+            updateWindText(currentTrackView);
         };
     } else {
         toggleBtn.style.display = "none";
@@ -265,6 +304,7 @@ async function getRoute(){
     window.drawWindRoute = drawWindRoute;
 }
 
+// NAVIGATION SUIVIE EN PIXELS (UNIVERSEL SMARTPHONES)
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -290,10 +330,3 @@ function startNavigation() {
         btn.style.backgroundColor = "#2ecc71"; 
 
         if (window.latlngsNormalPersist) {
-            window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
-                padding:,
-                maxZoom: 15
-            });
-        }
-    }
-}
