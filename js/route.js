@@ -12,9 +12,23 @@ function getSegmentDirection(p1, p2){
     return angle;
 }
 
+// Direction segment route
+function getSegmentDirection(p1, p2){
+    const dy = p2[0] - p1[0];
+    const dx = p2[1] - p1[1];
+    
+    let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+    if(angle < 0){
+        angle += 360;
+    }
+
+    return angle;
+}
+
 async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
-    const url = "https://api.openrouteservice.org/v2/directions/cycling-regular/geojson";
+    const url = "https://openrouteservice.org";
   
     const body = {
         coordinates: [
@@ -135,7 +149,7 @@ function drawGrayRoute(latlngs){
 
 // Calcul trajet principaux
 async function getRoute(){
-    
+    alert("getRoute démarré");
     if(!window.userPosition){
         alert("Définissez votre position d'abord");
         return;
@@ -146,13 +160,12 @@ async function getRoute(){
         return;
     }
     
-    // 🔥 Sécurisation des index : Index 0 = Latitude, Index 1 = Longitude selon votre gps.js
     const start = {   
         lat: window.userPosition[0],
         lng: window.userPosition[1]
     };
     
-   
+    alert("Départ : " + start.lat + " / " + start.lng);
     const endLat = window.destination.lat;
     const endLon = window.destination.lon;
     
@@ -163,10 +176,12 @@ async function getRoute(){
         return;
     }
 
+    // 2. Extraction route normale
     const normalFeature = allRoutesData.features[0];
     const coordsNormal = normalFeature.geometry.coordinates;
     const latlngsNormal = coordsNormal.map(point => [point[1], point[0]]);
 
+    // 3. Extraction route alternative
     let latlngsAlternative = latlngsNormal; 
     let alternativeFeature = normalFeature;
 
@@ -208,31 +223,23 @@ async function getRoute(){
         : "🚴 CycloWind recommande ce trajet";
 
     // --- CONFIGURATION DE L'AFFICHAGE DYNAMIQUE ---
-           function updateWindText(currentView, activeScore) {
+    function updateWindText(currentView, activeScore) {
         const featureActive = currentView === "normale" ? normalFeature : alternativeFeature;
         const distanceKm = (featureActive.properties.summary.distance / 1000).toFixed(1);
 
-        // --- CALCUL DE LA DIFFÉRENCE RÉELLE ---
-        // (Score Normal - Score Alternatif) / Score Normal * 100
         const rawGain = ((normalScore - alternativeScore) / normalScore) * 100;
-
         let gainText = "";
 
         if (allRoutesData.features.length <= 1) {
-            // Cas 1 : L'API n'a pas trouvé d'autre rue physique
             gainText = "🌬️ Aucune route alternative disponible";
         } 
-        // 🔥 AJUSTEMENT ICI : Si l'écart est inférieur à 5% (en plus ou en moins), les routes sont jugées ÉGALES
         else if (Math.abs(rawGain) < 5) { 
             gainText = "🌬️ Exposition au vent équivalente sur les deux trajets";
         } 
-        else if (rawGain >= 5) { 
-            // Cas 3 : L'alternative est MEILLEURE (Gain positif)
-             gainText = `🌱 Économie de vent : -${Math.abs(rawGain).toFixed(0)}% d'effort sur l'alternative`;
+        else if (rawGain >= 5) {
+            gainText = `🌱 Économie de vent : -${Math.abs(rawGain).toFixed(0)}% d'effort sur l'alternative`;
         } 
         else {
-            // Cas 4 : L'alternative est MOINS BONNE (Gain négatif)
-            // On utilise Math.abs() pour transformer le chiffre négatif (ex: -15) en positif (ex: 15)
             gainText = `⚠️ Attention : +${Math.abs(rawGain).toFixed(0)}% d'effort vent sur l'alternative`;
         }
 
@@ -249,24 +256,49 @@ async function getRoute(){
         `;
     }
 
-
-
     updateWindText("normale", normalScore);
 
-        // 🔥 AJUSTEMENT DANS getRoute() : Limite stricte pour le zoom automatique global
+    // 🔥 RÉPARÉ : Valeurs de padding restaurées [50, 50] avec maxZoom fixe anti-dézoom Apple
     if (latlngsNormal && latlngsNormal.length > 0) {
         const bounds = L.latLngBounds(latlngsNormal);
-        
-        // maxZoom: 16 empêche l'écran de s'éloigner trop (très fréquent sur iOS)
         window.map.fitBounds(bounds, { 
-            padding: [40, 40],
-            maxZoom: 16 
+            padding: [50, 50],
+            maxZoom: 15 // Fixé à 15 pour une vue globale d'ensemble confortable sur iPhone
         });
     }
 
-    // ... (conservez le reste du code intermédiaire de votre bouton toggle identique)
+    // --- LOGIQUE DU BOUTON TOGGLE ROUTE A GAUCHE ---
+    const toggleBtn = document.getElementById("toggleRouteBtn");
+    
+    if (allRoutesData.features.length > 1) {
+        toggleBtn.style.display = "block";
+        let showingAlternative = false;
+        toggleBtn.innerText = "Voir la route alternative";
 
-// 🔥 REMPLACER ENTIÈREMENT LA FONCTION DE NAVIGATION À LA FIN DE route.js
+        toggleBtn.onclick = function() {
+            window.routeGroup.clearLayers();
+            if (typeof routeLayers !== 'undefined') { routeLayers = []; }
+
+            if (!showingAlternative) {
+                drawWindRoute(window.latlngsAlternativePersist);
+                toggleBtn.innerText = "Voir la route normale";
+                updateWindText("alternative", alternativeScore);
+                showingAlternative = true;
+            } else {
+                drawWindRoute(window.latlngsNormalPersist);
+                toggleBtn.innerText = "Voir la route alternative";
+                updateWindText("normale", normalScore);
+                showingAlternative = false;
+            }
+        };
+    } else {
+        toggleBtn.style.display = "none";
+    }
+
+    window.drawWindRoute = drawWindRoute;
+}
+
+// 🔥 RÉPARÉ ET ENTIÈREMENT SÉCURISÉ POUR TOUS LES SMARTPHONES
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -281,16 +313,13 @@ function startNavigation() {
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; 
 
-        // 1. On applique le zoom universel direct sur l'utilisateur
+        // 1. Placement direct au zoom de suivi 16
         window.map.setView(window.userPosition, 16);
 
-        // 2. 🔥 RECENTRAGE EN PIXELS (S'adapte à tous les écrans Apple/Android)
-        // Au lieu de tricher sur la latitude, on demande à Leaflet de faire glisser la carte
-        // de 80 pixels vers le bas. La flèche remonte automatiquement au-dessus de vos fenêtres.
+        // 2. Glissement de l'écran en pixels pour dégager les fenêtres d'information du bas
         setTimeout(() => {
-            window.map.panBy([0, -80], { animate: true });
-        }, 200);
-
+            window.map.panBy([0, -85], { animate: true });
+        }, 250);
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
@@ -298,8 +327,8 @@ function startNavigation() {
 
         if (window.latlngsNormalPersist) {
             window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
-                padding: [40, 40],
-                maxZoom: 16 
+                padding: [50, 50],
+                maxZoom: 15
             });
         }
     }
