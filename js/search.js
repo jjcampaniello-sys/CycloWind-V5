@@ -1,5 +1,4 @@
 
-
 window.destination = null;
 
 function searchDestination(){
