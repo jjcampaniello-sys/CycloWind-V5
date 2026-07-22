@@ -63,7 +63,7 @@ function onPositionUpdate(position){
         window.map.setView([lat, lon], 18, { animate: false });
         // Déplacement en pixels pour remonter la flèche au-dessus des bandeaux
         const pixelX = 0;
-        const pixelY = -10;
+        const pixelY = -5;
         window.map.panBy(Array(pixelX, pixelY), { animate: false });
     }
 }
