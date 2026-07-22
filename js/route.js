@@ -265,16 +265,18 @@ async function getRoute(){
         let showingAlternative = false;
         toggleBtn.innerText = "Voir la route alternative";
 
-        toggleBtn.onclick = function() {
+               toggleBtn.onclick = function() {
             window.routeGroup.clearLayers();
             if (typeof routeLayers !== 'undefined') { routeLayers = []; }
 
             if (!showingAlternative) {
+                // L'utilisateur veut voir l'alternative
                 drawWindRoute(window.latlngsAlternativePersist);
                 toggleBtn.innerText = "Voir la route normale";
                 updateWindText("alternative", alternativeScore);
                 showingAlternative = true;
             } else {
+                // L'utilisateur revient à la route normale
                 drawWindRoute(window.latlngsNormalPersist);
                 toggleBtn.innerText = "Voir la route alternative";
                 updateWindText("normale", normalScore);
@@ -288,7 +290,7 @@ async function getRoute(){
     window.drawWindRoute = drawWindRoute;
 }
 
-// 🔥 REPARÉ ET REFERMÉ : Fonction commandée par le bouton Démarrer
+// 🔥 AJOUT DE LA FONCTION DE NAVIGATION SÉCURISÉE EN PIXELS (Pour Apple & Android)
 function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
@@ -301,15 +303,24 @@ function startNavigation() {
     if (!window.isNavigating) {
         window.isNavigating = true;
         btn.innerText = "Arrêter";
-        btn.style.backgroundColor = "#e74c3c"; 
-        window.map.setView(window.userPosition, 17);
+        btn.style.backgroundColor = "#e74c3c"; // Rouge
+
+        // 1. Placement direct au zoom de suivi standard 16
+        window.map.setView(window.userPosition, 16);
+
+        // 2. Glissement physique de l'écran en pixels pour remonter la flèche bleue
+        setTimeout(() => {
+            window.map.panBy([0, -85], { animate: true });
+        }, 250);
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
-        btn.style.backgroundColor = "#2ecc71"; 
+        btn.style.backgroundColor = "#2ecc71"; // Vert
 
         if (window.latlngsNormalPersist) {
-            window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { padding: [50, 50] });
+            window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
+                padding: [50, 50] 
+            });
         }
     }
 }
