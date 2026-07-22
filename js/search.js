@@ -1,3 +1,5 @@
+alert("search.js chargé");
+
 window.destination = null;
 
 function searchDestination(){
@@ -6,9 +8,20 @@ function searchDestination(){
 
     if(query.length < 3) return;
 
-    // 🔥 ASSEMBLAGE DE SÉCURITÉ : Restaure "photon.komoot.io" de manière robuste
+    // 1. Définition du domaine pour l'API
     const domaineApi = "pho" + "ton" + ".komoot.io";
-    const urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(query)}&limit=5&lang=fr`;
+    
+    // 2. 🔥 AJOUT DU FILTRE GEOGRAPHIQUE (Location Bias)
+    // Si la position GPS de l'utilisateur est déjà connue, on l'envoie à l'API pour cibler sa ville/quartier
+    let parametresGeo = "";
+    if (window.userPosition && window.userPosition[0] && window.userPosition[1]) {
+        const lat = window.userPosition[0];
+        const lon = window.userPosition[1];
+        parametresGeo = `&lat=${lat}&lon=${lon}`; // Centre la recherche sur vous
+    }
+
+    // 3. Construction de l'URL finale avec les filtres géographiques inclus
+    const urlComplete = `https://${domaineApi}/api/?q=${encodeURIComponent(query)}&limit=5&lang=fr${parametresGeo}`;
 
     fetch(urlComplete)
         .then(res => res.json())
@@ -17,17 +30,14 @@ function searchDestination(){
             const container = document.getElementById("suggestions");
             container.innerHTML = "";
 
-            // Filtre mémoire pour éviter d'afficher les adresses identiques
             const uniqueAddresses = new Set();
 
             data.features.forEach(place => {
 
-                // 1. Récupération des données textuelles de l'adresse
                 const name = place.properties.name || "";
                 const housenumber = place.properties.housenumber || ""; 
                 const city = place.properties.city || "";
 
-                // 2. Reconstruction de l'adresse (gère de manière transparente l'absence ou présence de numéro)
                 let full = "";
                 if (housenumber && !name.includes(housenumber)) {
                     full = housenumber + " " + name + " " + city;
@@ -35,28 +45,24 @@ function searchDestination(){
                     full = name + " " + city;
                 }
 
-                // Nettoyage des espaces multiples superflus
                 full = full.replace(/\s+/g, ' ').trim();
 
                 if (!full) full = "Lieu inconnu";
 
-                // 3. Application du filtre anti-doublon
                 if (uniqueAddresses.has(full)) {
-                    return; // Ignore et passe au point suivant si l'intitulé est identique
+                    return; 
                 }
                 uniqueAddresses.add(full);
 
-                // 4. Création et insertion de l'élément HTML cliquable
                 const div = document.createElement("div");
                 div.innerHTML = full;
                 div.style.padding = "10px";
                 div.style.cursor = "pointer";
 
                 div.onclick = function(){
-                    // Indexation exacte du tableau [Longitude, Latitude]
                     window.destination = {
-                        lat: place.geometry.coordinates[1], // Index 1 = Latitude
-                        lon: place.geometry.coordinates[0]  // Index 0 = Longitude
+                        lat: place.geometry.coordinates[1], 
+                        lon: place.geometry.coordinates[0]  
                     };
 
                     document.getElementById("destination").value = full;
