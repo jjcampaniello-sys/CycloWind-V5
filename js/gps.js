@@ -43,10 +43,8 @@ function onPositionUpdate(position){
     const lat = position.coords.latitude;
     const lon = position.coords.longitude;
 
-    // 🔥 STOCKAGE GLOBAL
     window.userPosition = [lat, lon];
     console.log("Position stockée :", window.userPosition);
-    console.log("Position :", lat, lon);
 
     if(!window.map){
         console.error("map NON prête");
@@ -55,18 +53,20 @@ function onPositionUpdate(position){
 
     updateBikeArrowPosition(lat, lon);
 
-    // 🔥 AMÉLIORATION SÉCURISÉE :
-    // 1. Cadre sur vous au tout premier démarrage de l'application
+    // 1. Premier chargement de l'application : zoom fixe propre
     if (isFirstLoad) {
         window.map.setView([lat, lon], 16);
         isFirstLoad = false;
     }
 
-    // 2. Suit vos mouvements uniquement si vous avez cliqué sur "Démarrer"
+    // 2. 🔥 SUIVI EN NAIVGATION AVEC RECENTRAGE DÉCALÉ EN PIXELS
     if (window.isNavigating) {
-        window.map.setView([lat, lon], 17);
+        // Évite les micro-sauts visuels sur Safari : On se déplace d'abord, puis on décale
+        window.map.setView([lat, lon], 16, { animate: false });
+        window.map.panBy([0, -80], { animate: false }); 
     }
 }
+
 
 // ----------------------------
 function updateBikeArrowPosition(lat, lon){
