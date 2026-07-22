@@ -14,18 +14,22 @@ function getSegmentDirection(p1, p2){
 
 async function getAlternativeRoute(start, endLat, endLon) {
     const apiKey = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImU5N2JkNDJjYTM5MzRjYTFhODQ1MTE2YjViNmQ2ZGJjIiwiaCI6Im11cm11cjY0In0=";
+    
+    // 🔥 CONFIGURATION ROBUSTE : Utilisation de l'endpoint standard JSON pour la gestion des alternatives
     const url = "https://openrouteservice.org";
   
-    // Construction sécurisée sans aucun crochet brut pour l'envoi API
-    const coordStart = Array(start.lng, start.lat);
-    const coordEnd = Array(endLon, endLat);
-
     const body = {
-        coordinates: Array(coordStart, coordEnd),
-        alternative_routes: {
-            target_count: 3,    
-            share_factor: 0.4,  
-            weight_factor: 1.8  
+        coordinates: [
+            [start.lng, start.lat],
+            [endLon, endLat]
+        ],
+        // Structure officielle attendue par l'API v2 d'ORS
+        options: {
+            alternative_routes: {
+                target_count: 3,    
+                share_factor: 0.6,  
+                weight_factor: 1.4  
+            }
         }
     };
 
@@ -37,6 +41,11 @@ async function getAlternativeRoute(start, endLat, endLon) {
         },
         body: JSON.stringify(body)
     });
+
+    if (!response.ok) {
+        console.error("Erreur serveur OpenRouteService :", await response.text());
+        return null;
+    }
 
     const data = await response.json();
     return data; 
@@ -82,11 +91,8 @@ function drawWindRoute(latlngs){
         if(cost > 20) color = "red";
         else if(cost > 8) color = "orange";
 
-        const pointA = latlngs[i];
-        const pointB = latlngs[i+1];
-
         const line = L.polyline(
-            Array(pointA, pointB),
+            [latlngs[i], latlngs[i+1]],
             { color: color, weight: 6 }
         ).addTo(window.routeGroup);
 
@@ -123,50 +129,50 @@ async function getRoute(){
     
     const allRoutesData = await getAlternativeRoute(start, endLat, endLon);
     
-    if (!allRoutesData || !allRoutesData.features || allRoutesData.features.length === 0) {
-        alert("Aucun itinéraire trouvé");
+    if (!allRoutesData || !allRoutesData.routes || allRoutesData.routes.length === 0) {
+        alert("Aucun itinéraire trouvé par les serveurs météo");
         return;
     }
 
-    // 🔥 FIX TECHNIQUE : Réintégration propre des index [1] (Latitude) et [0] (Longitude)
-    // Extraction Route 1
-    const feature1 = allRoutesData.features;
-    const latlngs1 = feature1.geometry.coordinates.map(p => Array(p, p));
+    // 🔥 ADAPTATION FORMAT STANDARDS JSON (routes au lieu de features.geometry)
+    // Extraction Route 1 (Principale)
+    const feature1 = allRoutesData.routes[0];
+    const latlngs1 = feature1.geometry.map(p => [p[1], p[0]]); // ORS renvoie [lat, lon] ou [lon, lat] selon l'endpoint, réaligné ici
     const score1 = calculateWindScore(latlngs1);
 
-    // Extraction Route 2
+    // Extraction Route 2 (Alternative A)
     let latlngs2 = latlngs1; 
     let score2 = score1;
     let feature2 = feature1;
-    if (allRoutesData.features.length > 1) {
-        feature2 = allRoutesData.features;
-        latlngs2 = feature2.geometry.coordinates.map(p => Array(p, p));
+    if (allRoutesData.routes.length > 1) {
+        feature2 = allRoutesData.routes[1];
+        latlngs2 = feature2.geometry.map(p => [p[1], p[0]]);
         score2 = calculateWindScore(latlngs2);
     }
 
-    // Extraction Route 3
+    // Extraction Route 3 (Alternative B)
     let latlngs3 = latlngs1;
     let score3 = score1;
     let feature3 = feature1;
-    if (allRoutesData.features.length > 2) {
-        feature3 = allRoutesData.features;
-        latlngs3 = feature3.geometry.coordinates.map(p => Array(p, p));
+    if (allRoutesData.routes.length > 2) {
+        feature3 = allRoutesData.routes[2];
+        latlngs3 = feature3.geometry.map(p => [p[1], p[0]]);
         score3 = calculateWindScore(latlngs3);
     }
 
-    window.allTracksPersist = Array(latlngs1, latlngs2, latlngs3);
-    window.allScoresPersist = Array(score1, score2, score3);
-    window.allFeaturesPersist = Array(feature1, feature2, feature3);
-    window.currentRoute = latlngs1.map(p => ({ lat: p, lng: p }));
+    window.allTracksPersist = [latlngs1, latlngs2, latlngs3];
+    window.allScoresPersist = [score1, score2, score3];
+    window.allFeaturesPersist = [feature1, feature2, feature3];
+    window.currentRoute = latlngs1.map(p => ({ lat: p[0], lng: p[1] }));
 
-    const firstDir = getSegmentDirection(latlngs1, latlngs1);
+    const firstDir = getSegmentDirection(latlngs1[0], latlngs1[1]);
     await getWind(start.lat, start.lng, firstDir);
     
     window.routeGroup.clearLayers();
     drawWindRoute(latlngs1);
     
-    if (allRoutesData.features.length > 1) drawGrayRoute(latlngs2);
-    if (allRoutesData.features.length > 2) drawGrayRoute(latlngs3);
+    if (allRoutesData.routes.length > 1) drawGrayRoute(latlngs2);
+    if (allRoutesData.routes.length > 2) drawGrayRoute(latlngs3);
 
     // ANALYSE COMPARATIVE
     let bestIndex = 0;
@@ -187,7 +193,7 @@ async function getRoute(){
     function updateWindText(viewIndex) {
         const activeFeature = window.allFeaturesPersist[viewIndex];
         const activeScore = window.allScoresPersist[viewIndex];
-        const distanceKm = (activeFeature.properties.summary.distance / 1000).toFixed(1);
+        const distanceKm = (activeFeature.summary.distance / 1000).toFixed(1);
 
         const rawGain = ((score1 - activeScore) / score1) * 100;
         let gainText = "";
@@ -202,7 +208,7 @@ async function getRoute(){
             gainText = `⚠️ Attention : +${Math.abs(rawGain).toFixed(0)}% d'effort vent`;
         }
 
-        const nomsVues = Array("Initiale", "Alternative A", "Alternative B");
+        const nomsVues = ["Initiale", "Alternative A", "Alternative B"];
 
         document.getElementById("windInfo").innerHTML = `
             ${recommendation}
@@ -221,28 +227,24 @@ async function getRoute(){
 
     if (latlngs1 && latlngs1.length > 0) {
         const bounds = L.latLngBounds(latlngs1);
-        const margePixelX = 50;
-        const margePixelY = 50;
-        const objetPadding = L.point(margePixelX, margePixelY);
-
         window.map.fitBounds(bounds, { 
-            padding: objetPadding,
+            padding: [50, 50],
             maxZoom: 15
         });
     }
 
     const toggleBtn = document.getElementById("toggleRouteBtn");
     
-    if (allRoutesData.features.length > 1) {
+    if (allRoutesData.routes.length > 1) {
         toggleBtn.style.display = "block";
         let currentTrackView = 0;
-        const maxViews = allRoutesData.features.length;
+        const maxViews = allRoutesData.routes.length;
 
         toggleBtn.innerText = "Voir l'Alternative A";
 
         toggleBtn.onclick = function() {
             window.routeGroup.clearLayers();
-            if (typeof routeLayers !== 'undefined') { routeLayers = Array(); }
+            if (typeof routeLayers !== 'undefined') { routeLayers = []; }
 
             currentTrackView = (currentTrackView + 1) % maxViews;
             drawWindRoute(window.allTracksPersist[currentTrackView]);
@@ -253,7 +255,7 @@ async function getRoute(){
                 }
             }
 
-            const prochainsNoms = Array("l'Alternative A", "l'Alternative B", "la Route Initiale");
+            const prochainsNoms = ["l'Alternative A", "l'Alternative B", "la Route Initiale"];
             let textIdx = currentTrackView;
             if (maxViews === 2 && currentTrackView === 1) textIdx = 1;
             toggleBtn.innerText = "Voir " + prochainsNoms[textIdx];
@@ -284,22 +286,16 @@ function startNavigation() {
         window.map.setView(window.userPosition, 16);
 
         setTimeout(() => {
-            const decalageX = 0;
-            const decalageY = -85;
-            window.map.panBy(Array(decalageX, decalageY), { animate: true });
+            window.map.panBy([0, -85], { animate: true });
         }, 250);
     } else {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
         btn.style.backgroundColor = "#2ecc71"; 
 
-        if (window.allTracksPersist && window.allTracksPersist) {
-            const margePixelX = 50;
-            const margePixelY = 50;
-            const objetPadding = L.point(margePixelX, margePixelY);
-
-            window.map.fitBounds(L.latLngBounds(window.allTracksPersist), { 
-                padding: objetPadding,
+        if (window.allTracksPersist && window.allTracksPersist[0]) {
+            window.map.fitBounds(L.latLngBounds(window.allTracksPersist[0]), { 
+                padding: [50, 50],
                 maxZoom: 15
             });
         }
