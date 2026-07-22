@@ -58,7 +58,7 @@ function onPositionUpdate(position){
     // 🔥 AMÉLIORATION SÉCURISÉE :
     // 1. Cadre sur vous au tout premier démarrage de l'application
     if (isFirstLoad) {
-        window.map.setView([lat, lon], 17);
+        window.map.setView([lat, lon], 16);
         isFirstLoad = false;
     }
 
