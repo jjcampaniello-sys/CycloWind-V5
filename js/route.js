@@ -310,7 +310,7 @@ function startNavigation() {
 
         // 2. Glissement physique de l'écran en pixels pour remonter la flèche bleue
         setTimeout(() => {
-            window.map.panBy([0, -85], { animate: true });
+            window.map.panBy([0, -140], { animate: true });
         }, 250);
     } else {
         window.isNavigating = false;
