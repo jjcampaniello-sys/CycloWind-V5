@@ -58,12 +58,16 @@ function onPositionUpdate(position){
         isFirstLoad = false;
     }
 
+     // 2. 🔥 SUIVI EN NAVIGATION RECENTRÉ MAIS SANS FORCER LE ZOOM
     if (window.isNavigating) {
-        window.map.setView([lat, lon], 17, { animate: false });
-        // Déplacement en pixels pour remonter la flèche au-dessus des bandeaux
-        const pixelX = 0;
-        const pixelY = -5;
-        window.map.panBy(Array(pixelX, pixelY), { animate: false });
+        // On récupère le zoom actuel de l'écran choisi par l'utilisateur. 
+        // Si aucun itinéraire n'est encore lancé, on utilise 19 par défaut.
+        const zoomActuelA lEcran = window.map.getZoom();
+        window.currentNavZoom = zoomActuelA lEcran || 19;
+
+        // On recentre sur le cycliste en respectant STRICTEMENT le zoom qu'il a choisi à l'écran !
+        window.map.setView([lat, lon], window.currentNavZoom, { animate: false });
+        window.map.panBy([0, -140], { animate: false });
     }
 }
 
