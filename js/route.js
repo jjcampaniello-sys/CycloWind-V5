@@ -152,8 +152,7 @@ async function getRoute(){
         lng: window.userPosition[1]
     };
     
-   
-    const endLat = window.destination.lat;
+       const endLat = window.destination.lat;
     const endLon = window.destination.lon;
     
     const allRoutesData = await getAlternativeRoute(start, endLat, endLon);
