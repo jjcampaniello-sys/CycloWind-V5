@@ -303,7 +303,12 @@ function startNavigation() {
         window.isNavigating = true;
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; // Rouge
-
+        
+ // 🔥 AJOUT : Masque complètement l'encadré blanc au démarrage de la route
+        if (windInfoPanel) {
+            windInfoPanel.style.display = "none";
+        }
+        
         // 1. Placement direct au zoom de suivi standard 17
         window.map.setView(window.userPosition, 17);
 
@@ -315,6 +320,11 @@ function startNavigation() {
         window.isNavigating = false;
         btn.innerText = "Démarrer";
         btn.style.backgroundColor = "#2ecc71"; // Vert
+
+         // 🔥 AJOUT : Réaffiche le cadran blanc si on arrête la navigation
+        if (windInfoPanel) {
+            windInfoPanel.style.display = "block";
+        }
 
         if (window.latlngsNormalPersist) {
             window.map.fitBounds(L.latLngBounds(window.latlngsNormalPersist), { 
