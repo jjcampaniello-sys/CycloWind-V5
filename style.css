@@ -162,3 +162,7 @@ button {
 #toggleRouteBtn:hover {
     background-color: #2980b9;
 }
+/* Cette classe forcera n'importe quel élément à disparaître instantanément */
+.nav-hidden {
+    display: none !important;
+}
