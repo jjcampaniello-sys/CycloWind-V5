@@ -304,9 +304,9 @@ function startNavigation() {
         btn.innerText = "Arrêter";
         btn.style.backgroundColor = "#e74c3c"; // Rouge
         
- // 🔥 AJOUT : Masque complètement l'encadré blanc au démarrage de la route
+ // 🔥 MODIFICATION : On AJOUTE la classe pour faire DISPARAÎTRE l'encadré de suite au clic
         if (windInfoPanel) {
-            windInfoPanel.style.display = "none";
+            windInfoPanel.classList.add("nav-hidden");
         }
         
         // 1. Placement direct au zoom de suivi standard 17
@@ -321,9 +321,9 @@ function startNavigation() {
         btn.innerText = "Démarrer";
         btn.style.backgroundColor = "#2ecc71"; // Vert
 
-         // 🔥 AJOUT : Réaffiche le cadran blanc si on arrête la navigation
+         // 🔥 MODIFICATION : On RETIRE la classe pour faire RÉAPPARAÎTRE l'encadré au clic sur Arrêter
         if (windInfoPanel) {
-            windInfoPanel.style.display = "block";
+            windInfoPanel.classList.remove("nav-hidden");
         }
 
         if (window.latlngsNormalPersist) {
