@@ -7,7 +7,6 @@ let isFirstLoad = true;
 window.isNavigating = false;
 
 
-
 function startGPS(){
     if(!navigator.geolocation){
         alert("GPS non disponible");
