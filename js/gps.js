@@ -67,7 +67,7 @@ function onPositionUpdate(position){
 
         // On recentre sur le cycliste en respectant STRICTEMENT le zoom qu'il a choisi à l'écran !
         window.map.setView([lat, lon], window.currentNavZoom, { animate: false });
-        window.map.panBy([0, -140], { animate: false });
+        window.map.panBy([0, -5], { animate: false });
     }
 }
 
