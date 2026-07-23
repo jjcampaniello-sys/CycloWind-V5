@@ -54,7 +54,7 @@ function onPositionUpdate(position){
     updateBikeArrowPosition(lat, lon);
 
     if (isFirstLoad) {
-        window.map.setView([lat, lon], 17);
+        window.map.setView([lat, lon], 19);
         isFirstLoad = false;
     }
 
@@ -62,8 +62,8 @@ function onPositionUpdate(position){
     if (window.isNavigating) {
         // On récupère le zoom actuel de l'écran choisi par l'utilisateur. 
         // Si aucun itinéraire n'est encore lancé, on utilise 19 par défaut.
-        const zoomActuelA lEcran = window.map.getZoom();
-        window.currentNavZoom = zoomActuelA lEcran || 19;
+        const zoomActuel = window.map.getZoom();
+        window.currentNavZoom = zoomActuel || 19;
 
         // On recentre sur le cycliste en respectant STRICTEMENT le zoom qu'il a choisi à l'écran !
         window.map.setView([lat, lon], window.currentNavZoom, { animate: false });
