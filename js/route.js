@@ -114,7 +114,7 @@ function drawWindRoute(latlngs){
             {
                 color: color,
                 weight: 4,       // 🔥 CORRECTION : Ligne plus fine (au lieu de 6)
-                opacity: 0.7,    // 🔥 AJOUT : Légère transparence pour voir les écritures en dessous
+                opacity: 0.5,    // 🔥 AJOUT : Légère transparence pour voir les écritures en dessous
                 pane: 'overlayPane' // Force le tracé dans la couche des superpositions de Leaflet
             }
         ).addTo(window.routeGroup);
