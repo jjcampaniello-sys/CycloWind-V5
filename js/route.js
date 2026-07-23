@@ -319,8 +319,9 @@ function startNavigation() {
             windInfoPanel.classList.add("nav-hidden");
         }
         
-        // 1. Placement direct au zoom de suivi standard 17
-        window.map.setView(window.userPosition, 17);
+        // 🔥 INITIALISATION DU ZOOM MÉMOIRE : 17 au premier clic
+        window.currentNavZoom = 17;
+        window.map.setView(window.userPosition, window.currentNavZoom);
 
         // 2. Glissement physique de l'écran en pixels pour remonter la flèche bleue
         setTimeout(() => {
