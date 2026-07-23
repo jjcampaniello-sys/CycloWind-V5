@@ -294,6 +294,12 @@ function startNavigation() {
     const btn = document.getElementById("startNavBtn");
     if (!btn) return;
 
+    // 🔥 CORRECTIF : On cible d'abord le conteneur global droit s'il existe, sinon l'ID windInfo directement
+    let windInfoPanel = document.querySelector(".wind-container-right");
+    if (!windInfoPanel) {
+        windInfoPanel = document.getElementById("windInfo");
+    }
+
     if (!window.userPosition) {
         alert("Position GPS non détectée. Impossible de démarrer.");
         return;
